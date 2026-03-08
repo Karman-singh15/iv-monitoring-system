@@ -1,0 +1,79 @@
+# ----------------------------
+# Node.js
+# ----------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# Arduino
+# ----------------------------
+*.hex
+*.elf
+*.bin
+
+# Arduino build folders
+build/
+dist/
+
+# Arduino IDE
+*.ino.standard.hex
+
+# ----------------------------
+# MongoDB
+# ----------------------------
+*.lock
+*.ns
+*.wt
+
+# ----------------------------
+# Mac system files
+# ----------------------------
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# ----------------------------
+# VSCode
+# ----------------------------
+.vscode/
+
+# ----------------------------
+# Temporary files
+# ----------------------------
+tmp/
+temp/
+*.tmp
+*.swp
+
+# ----------------------------
+# Coverage / testing
+# ----------------------------
+coverage/
+.nyc_output/
+
+# ----------------------------
+# Production builds
+# ----------------------------
+out/
+.next/
