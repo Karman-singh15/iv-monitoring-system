@@ -1,19 +1,22 @@
-body{
- font-family:Arial;
- text-align:center;
- background:#f5f5f5;
+body {
+    background-color: #f8f9fa;
 }
 
-.card{
- background:white;
- padding:20px;
- margin:20px auto;
- width:300px;
- border-radius:10px;
- box-shadow:0 0 10px rgba(0,0,0,0.1);
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
 }
 
-button{
- padding:10px 20px;
- margin-top:10px;
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.navbar {
+    border-radius: 0 0 15px 15px;
+}
+
+#tempChart {
+    max-height: 300px;
 }
