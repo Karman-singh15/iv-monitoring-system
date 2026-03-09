@@ -1,53 +1,39 @@
 const express = require("express")
 const cors = require("cors")
-const mongoose = require("mongoose")
 
 const { SerialPort } = require("serialport")
 const { ReadlineParser } = require("@serialport/parser-readline")
-
-const Data = require("./models/data")
 
 const app = express()
 
 app.use(cors())
 app.use(express.json())
 
-mongoose.connect("mongodb://127.0.0.1:27017/iot")
+let flowStatus = "UNKNOWN"
 
-// ---------- Arduino Serial ----------
+// Arduino serial
 const port = new SerialPort({
- path:"/dev/cu.usbmodem1101",
- baudRate:9600
+ path: "/dev/cu.usbserial-A5069RR4",
+ baudRate: 9600
 })
 
 const parser = port.pipe(new ReadlineParser({ delimiter: "\n" }))
 
-// ---------- Read Arduino ----------
-parser.on("data", async(line)=>{
+parser.on("data",(line)=>{
 
  console.log("Arduino:",line)
 
- if(line.startsWith("TEMP:")){
+ if(line.includes("FLOW_STOPPED")){
+  flowStatus = "STOPPED"
+ }
 
-   const temp = parseFloat(line.split(":")[1])
-
-   await Data.create({
-     temperature:temp,
-     time:new Date()
-   })
+ if(line.includes("FLOW_RUNNING")){
+  flowStatus = "RUNNING"
  }
 
 })
 
-// ---------- API get data ----------
-app.get("/data", async(req,res)=>{
-
- const data = await Data.find().sort({time:-1}).limit(10)
-
- res.json(data)
-})
-
-// ---------- Send Heart Rate ----------
+// send HR
 app.post("/heart",(req,res)=>{
 
  const {hr} = req.body
@@ -57,7 +43,7 @@ app.post("/heart",(req,res)=>{
  res.json({status:"sent"})
 })
 
-// ---------- Send SPO2 ----------
+// send SPO2
 app.post("/spo2",(req,res)=>{
 
  const {sp} = req.body
@@ -65,6 +51,15 @@ app.post("/spo2",(req,res)=>{
  port.write(`SP${sp}\n`)
 
  res.json({status:"sent"})
+})
+
+// get flow status
+app.get("/status",(req,res)=>{
+
+ res.json({
+  flow:flowStatus
+ })
+
 })
 
 app.listen(5000,()=>{

@@ -6,7 +6,6 @@ const int irPin = 2;
 const int servoPin = 9;
 const int ledPin = 6;
 const int buzzerPin = 7;
-const int lm35Pin = A0;
 
 const unsigned long timeout = 5000;
 
@@ -20,6 +19,11 @@ unsigned long lastDropTime = 0;
 
 int heartRate = 72;
 int spo2 = 98;
+
+// safety thresholds
+int HR_LOW = 50;
+int HR_HIGH = 120;
+int SPO2_LOW = 90;
 
 void setup() {
 
@@ -35,18 +39,52 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
-  lcd.setCursor(0,0);
-  lcd.print("IV Monitor");
-
-  delay(2000);
-  lcd.clear();
-
   lastDropTime = millis();
 }
 
-void loop() {
+void updateLCD(){
 
-  // -------- Receive commands from website --------
+  lcd.setCursor(0,0);
+  lcd.print("HR:");
+  lcd.print(heartRate);
+  lcd.print(" SP:");
+  lcd.print(spo2);
+  lcd.print("  ");
+
+  lcd.setCursor(0,1);
+
+  if(flowActive){
+    lcd.print("Flow: RUNNING ");
+  } else {
+    lcd.print("Flow: STOPPED ");
+  }
+}
+
+void stopFlow(){
+
+  motor.write(90);
+  flowActive = false;
+
+  digitalWrite(ledPin,HIGH);
+  digitalWrite(buzzerPin,HIGH);
+
+  Serial.println("FLOW_STOPPED");
+}
+
+void startFlow(){
+
+  motor.write(0);
+  flowActive = true;
+
+  digitalWrite(ledPin,LOW);
+  digitalWrite(buzzerPin,LOW);
+
+  Serial.println("FLOW_RUNNING");
+}
+
+void loop(){
+
+  // Receive HR & SPO2 from website
   if(Serial.available()){
 
     String cmd = Serial.readStringUntil('\n');
@@ -59,60 +97,41 @@ void loop() {
       spo2 = cmd.substring(2).toInt();
     }
 
-    lcd.setCursor(0,0);
-    lcd.print("HR:");
-    lcd.print(heartRate);
-    lcd.print(" SPO2:");
-    lcd.print(spo2);
+    updateLCD();
   }
 
-  // -------- Temperature --------
-  int sensorValue = analogRead(lm35Pin);
-  float voltage = sensorValue * (5.0 / 1023.0);
-  float temperature = voltage * 100;
+  // Safety check
+  if(heartRate < HR_LOW || heartRate > HR_HIGH || spo2 < SPO2_LOW){
 
-  Serial.print("TEMP:");
-  Serial.println(temperature);
+    if(flowActive){
+      stopFlow();
+    }
 
-  lcd.setCursor(0,1);
-  lcd.print("Temp:");
-  lcd.print(temperature);
-  lcd.print("C ");
+  }
 
-  // -------- IR Drop Detection --------
+  // IR Drop detection
   bool sensor = digitalRead(irPin);
 
   if(lastSensor == HIGH && sensor == LOW){
 
     lastDropTime = millis();
 
-    Serial.println("DROP");
-
     if(!flowActive){
-
-      motor.write(0);
-      flowActive = true;
-
-      digitalWrite(ledPin, LOW);
-      digitalWrite(buzzerPin, LOW);
+      startFlow();
     }
 
-    delay(60);
+    Serial.println("DROP");
   }
 
   lastSensor = sensor;
 
-  // -------- Flow Stop --------
+  // Flow timeout detection
   if(flowActive && millis() - lastDropTime >= timeout){
 
-    motor.write(90);
-    flowActive = false;
-
-    digitalWrite(ledPin, HIGH);
-    digitalWrite(buzzerPin, HIGH);
-
-    Serial.println("FLOW_STOPPED");
+    stopFlow();
   }
 
-  delay(1000);
+  updateLCD();
+
+  delay(500);
 }
