@@ -21,7 +21,7 @@ unsigned long lastDropTime = 0;
 int heartRate = 72;
 int spo2 = 98;
 
-// safety thresholds
+// Safety thresholds
 int HR_LOW = 50;
 int HR_HIGH = 120;
 int SPO2_LOW = 90;
@@ -73,11 +73,12 @@ void loop() {
   lcd.print(spo2);
   lcd.print("  ");
 
-  // -------- Safety check --------
+  // -------- Patient Safety Check --------
   if(heartRate < HR_LOW || heartRate > HR_HIGH || spo2 < SPO2_LOW){
 
     if(flowActive){
-      motor.write(90);
+
+      motor.write(90);  // close IV
       flowActive = false;
 
       digitalWrite(ledPin, HIGH);
@@ -95,9 +96,9 @@ void loop() {
 
     lastDropTime = millis();
 
-    if(!flowActive){
+    if(!flowActive && heartRate >= HR_LOW && heartRate <= HR_HIGH && spo2 >= SPO2_LOW){
 
-      motor.write(0);
+      motor.write(0);  // open IV
       flowActive = true;
 
       digitalWrite(ledPin, LOW);
@@ -117,7 +118,7 @@ void loop() {
   // -------- Flow Stop Detection --------
   if(flowActive && millis() - lastDropTime >= timeout){
 
-    motor.write(90);
+    motor.write(90);  // close IV
     flowActive = false;
 
     digitalWrite(ledPin, HIGH);
