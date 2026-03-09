@@ -17,6 +17,7 @@ bool lastSensor = HIGH;
 
 unsigned long lastDropTime = 0;
 
+// -------- Added HR and SPO2 --------
 int heartRate = 72;
 int spo2 = 98;
 
@@ -39,52 +40,18 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
+  lcd.setCursor(0,0);
+  lcd.print("IV Monitor");
+
+  delay(2000);
+  lcd.clear();
+
   lastDropTime = millis();
 }
 
-void updateLCD(){
+void loop() {
 
-  lcd.setCursor(0,0);
-  lcd.print("HR:");
-  lcd.print(heartRate);
-  lcd.print(" SP:");
-  lcd.print(spo2);
-  lcd.print("  ");
-
-  lcd.setCursor(0,1);
-
-  if(flowActive){
-    lcd.print("Flow: RUNNING ");
-  } else {
-    lcd.print("Flow: STOPPED ");
-  }
-}
-
-void stopFlow(){
-
-  motor.write(90);
-  flowActive = false;
-
-  digitalWrite(ledPin,HIGH);
-  digitalWrite(buzzerPin,HIGH);
-
-  Serial.println("FLOW_STOPPED");
-}
-
-void startFlow(){
-
-  motor.write(0);
-  flowActive = true;
-
-  digitalWrite(ledPin,LOW);
-  digitalWrite(buzzerPin,LOW);
-
-  Serial.println("FLOW_RUNNING");
-}
-
-void loop(){
-
-  // Receive HR & SPO2 from website
+  // -------- Receive HR and SPO2 from website --------
   if(Serial.available()){
 
     String cmd = Serial.readStringUntil('\n');
@@ -96,20 +63,32 @@ void loop(){
     if(cmd.startsWith("SP")){
       spo2 = cmd.substring(2).toInt();
     }
-
-    updateLCD();
   }
 
-  // Safety check
+  // -------- Display HR and SPO2 --------
+  lcd.setCursor(0,1);
+  lcd.print("HR:");
+  lcd.print(heartRate);
+  lcd.print(" SP:");
+  lcd.print(spo2);
+  lcd.print("  ");
+
+  // -------- Safety check --------
   if(heartRate < HR_LOW || heartRate > HR_HIGH || spo2 < SPO2_LOW){
 
     if(flowActive){
-      stopFlow();
-    }
+      motor.write(90);
+      flowActive = false;
 
+      digitalWrite(ledPin, HIGH);
+      digitalWrite(buzzerPin, HIGH);
+
+      lcd.setCursor(0,0);
+      lcd.print("PATIENT ALERT ");
+    }
   }
 
-  // IR Drop detection
+  // -------- IR Drop Detection --------
   bool sensor = digitalRead(irPin);
 
   if(lastSensor == HIGH && sensor == LOW){
@@ -117,21 +96,34 @@ void loop(){
     lastDropTime = millis();
 
     if(!flowActive){
-      startFlow();
+
+      motor.write(0);
+      flowActive = true;
+
+      digitalWrite(ledPin, LOW);
+      digitalWrite(buzzerPin, LOW);
+
+      lcd.setCursor(0,0);
+      lcd.print("Flow Resumed   ");
     }
 
-    Serial.println("DROP");
+    Serial.println("Drop detected");
+
+    delay(60);
   }
 
   lastSensor = sensor;
 
-  // Flow timeout detection
+  // -------- Flow Stop Detection --------
   if(flowActive && millis() - lastDropTime >= timeout){
 
-    stopFlow();
+    motor.write(90);
+    flowActive = false;
+
+    digitalWrite(ledPin, HIGH);
+    digitalWrite(buzzerPin, HIGH);
+
+    lcd.setCursor(0,0);
+    lcd.print("FLOW STOPPED!  ");
   }
-
-  updateLCD();
-
-  delay(500);
 }
