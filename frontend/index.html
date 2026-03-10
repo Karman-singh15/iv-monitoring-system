@@ -2,42 +2,46 @@
 <html>
 
 <head>
-<title>IV Monitor</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>IV Monitor</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js CDN for simple charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>IV Monitor</h1>
+        </div>
+    </nav>
 
-<h1>IV Monitor</h1>
+    <main class="container">
+        <section class="card">
+            <h2>Temperature</h2>
+            <div id="temp">-- °C</div>
+            <canvas id="tempChart"></canvas>
+        </section>
 
-<div class="card">
+        <section class="card">
+            <h2>Flow Status</h2>
+            <div id="flow">Loading...</div>
+        </section>
 
-<h2>Flow Status</h2>
-<div id="flow">Loading...</div>
+        <section class="card">
+            <h2>Heart Rate</h2>
+            <input id="hr" type="number" placeholder="bpm">
+            <button onclick="setHR()">Send</button>
+        </section>
 
-</div>
+        <section class="card">
+            <h2>SPO2</h2>
+            <input id="sp" type="number" placeholder="%">
+            <button onclick="setSP()">Send</button>
+        </section>
+    </main>
 
-<div class="card">
-
-<h2>Heart Rate</h2>
-
-<input id="hr" type="number">
-
-<button onclick="setHR()">Send</button>
-
-</div>
-
-<div class="card">
-
-<h2>SPO2</h2>
-
-<input id="sp" type="number">
-
-<button onclick="setSP()">Send</button>
-
-</div>
-
-<script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
