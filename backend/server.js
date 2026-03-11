@@ -10,6 +10,7 @@ app.use(cors())
 app.use(express.json())
 
 let flowStatus = "UNKNOWN"
+let dropMessage = null // latest message from Arduino, e.g. "Drop detected"
 
 // Arduino serial
 const port = new SerialPort({
@@ -23,12 +24,19 @@ parser.on("data",(line)=>{
 
  console.log("Arduino:",line)
 
+ // basic flow state handling
  if(line.includes("FLOW_STOPPED")){
   flowStatus = "STOPPED"
  }
 
  if(line.includes("FLOW_RUNNING")){
   flowStatus = "RUNNING"
+ }
+
+ // look for drop notification (arduino prints something like "Drop detected")
+ if(line.toLowerCase().includes("drop")){
+  // store the raw line so the frontend can display it verbatim
+  dropMessage = line.trim()
  }
 
 })
@@ -53,11 +61,12 @@ app.post("/spo2",(req,res)=>{
  res.json({status:"sent"})
 })
 
-// get flow status
+// get flow status and any drop message
 app.get("/status",(req,res)=>{
 
  res.json({
-  flow:flowStatus
+  flow:flowStatus,
+  drop: dropMessage
  })
 
 })

@@ -54,6 +54,27 @@ function updateChart(labels, data) {
     }
 }
 
+// fetch flow / drop status and update UI
+async function loadStatus() {
+    try {
+        const res = await fetch("http://localhost:5000/status");
+        const status = await res.json();
+        const flowEl = document.getElementById("flow");
+
+        if (status.drop) {
+            // show the raw drop message first
+            flowEl.innerText = status.drop;
+        } else if (status.flow) {
+            flowEl.innerText = status.flow;
+        } else {
+            flowEl.innerText = "Unknown";
+        }
+    } catch (err) {
+        console.error("Error loading status:", err);
+        document.getElementById("flow").innerText = "Error";
+    }
+}
+
 async function setHR() {
     const hr = document.getElementById("hr").value;
     if (!hr) {
@@ -98,6 +119,10 @@ async function setSP() {
     }
 }
 
-// Load data on page load and every 2 seconds
+// Load data and status on page load and every 2 seconds
 loadData();
-setInterval(loadData, 2000);
+loadStatus();
+setInterval(() => {
+    loadData();
+    loadStatus();
+}, 2000);
