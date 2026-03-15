@@ -22,7 +22,7 @@ int heartRate = 72;
 int spo2 = 98;
 
 // Safety thresholds
-int HR_LOW = 50;
+int HR_LOW = 70;
 int HR_HIGH = 120;
 int SPO2_LOW = 90;
 
