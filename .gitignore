@@ -77,3 +77,7 @@ coverage/
 # ----------------------------
 out/
 .next/
+
+# Broad rules for ML models and logs
+*.pkl
+*.jsonl

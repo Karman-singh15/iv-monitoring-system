@@ -13,20 +13,39 @@
 <body>
     <nav class="navbar">
         <div class="container">
-            <h1>IV Monitor</h1>
+            <h1>🏥 IV Monitor + 🤖 ML Predictor</h1>
         </div>
     </nav>
 
     <main class="container">
+
         <section class="card">
-            <h2>Temperature</h2>
-            <div id="temp">-- °C</div>
-            <canvas id="tempChart"></canvas>
+            <h2>💧 Flow Status</h2>
+            <div id="flow">Loading...</div>
+            <div id="volume" style="margin-top: 10px; font-weight: bold; font-size: 1.2em; color: #4dabf7;">Volume Infused: 0.00 mL</div>
         </section>
 
         <section class="card">
-            <h2>Flow Status</h2>
-            <div id="flow">Loading...</div>
+            <h2>📊 Rate History</h2>
+            <div id="rateHistory">Collecting rate data...</div>
+        </section>
+
+        <section class="card">
+            <h2>⚠️ Anomaly Detection</h2>
+            <div id="anomaly">Awaiting data...</div>
+            <p style="font-size: 0.9em; color: #666; margin-top: 8px;">
+                🔴 HIGH_FLOW: Rate > 1.5x average<br>
+                🟡 LOW_FLOW: Rate < 0.5x average (possible blockage)
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>🔮 ML Prediction</h2>
+            <div id="remaining">Collecting data...</div>
+            <div id="timeRemaining" style="margin-top: 5px; font-weight: bold; color: #339af0; font-size: 1.1em;">⏱️ Time Remaining: -- min</div>
+            <p style="font-size: 0.9em; color: #666; margin-top: 8px;">
+                Based on recent flow patterns and total drops
+            </p>
         </section>
 
         <section class="card">

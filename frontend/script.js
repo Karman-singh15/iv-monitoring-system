@@ -1,4 +1,5 @@
 let tempChart;
+let rateChart;
 
 async function loadData() {
     try {
@@ -54,24 +55,109 @@ function updateChart(labels, data) {
     }
 }
 
-// fetch flow / drop status and update UI
+// fetch flow / drop status with rate history and anomalies
 async function loadStatus() {
     try {
         const res = await fetch("http://localhost:5000/status");
         const status = await res.json();
         const flowEl = document.getElementById("flow");
+        const rateEl = document.getElementById("rateHistory");
+        const anomalyEl = document.getElementById("anomaly");
 
+        // Flow status
         if (status.drop) {
-            // show the raw drop message first
             flowEl.innerText = status.drop;
         } else if (status.flow) {
             flowEl.innerText = status.flow;
         } else {
             flowEl.innerText = "Unknown";
         }
+
+        // Add volume update
+        const volumeEl = document.getElementById("volume");
+        if (status.totalVolume !== undefined && volumeEl) {
+            volumeEl.innerText = `Volume Infused: ${status.totalVolume.toFixed(2)} mL`;
+        }
+
+        // Rate history
+        if(status.rateHistory && status.rateHistory.length > 0) {
+            const ratesFormatted = status.rateHistory.map(r => r.toFixed(2)).join(" → ");
+            rateEl.innerText = `Rate history: [${ratesFormatted}] drops/sec`;
+        } else {
+            rateEl.innerText = "Collecting rate data...";
+        }
+
+        // Anomaly detection
+        if(status.anomaly) {
+            anomalyEl.innerText = `⚠️ ${status.anomaly.type}: ${status.anomaly.value.toFixed(2)} (avg: ${status.anomaly.avg})`;
+            anomalyEl.style.color = "#ff6b6b";
+            anomalyEl.style.fontWeight = "bold";
+        } else {
+            anomalyEl.innerText = "✅ Flow normal";
+            anomalyEl.style.color = "#51cf66";
+        }
+
+        // Check if we have enough data for prediction
+        if(status.rateHistory && status.rateHistory.length === 5) {
+            await predictRemaining(status.rateHistory, status.totalDrops);
+        }
+
     } catch (err) {
         console.error("Error loading status:", err);
         document.getElementById("flow").innerText = "Error";
+    }
+}
+
+// Get ML prediction for remaining volume
+async function predictRemaining(rateHistory, totalDrops) {
+    try {
+        const res = await fetch("http://localhost:5000/predict", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                totalDrops: totalDrops
+            })
+        });
+
+        const prediction = await res.json();
+        const remainEl = document.getElementById("remaining");
+
+        if(prediction.remaining !== undefined) {
+            remainEl.innerText = `🔮 Predicted remaining: ${prediction.remaining.toFixed(2)} ml`;
+            
+            const timeRemainEl = document.getElementById("timeRemaining");
+            if (timeRemainEl) {
+                if (prediction.timeRemaining !== undefined && prediction.timeRemaining > 0) {
+                    timeRemainEl.innerText = `⏱️ Time Remaining: ${prediction.timeRemaining.toFixed(1)} min`;
+                } else {
+                    timeRemainEl.innerText = "⏱️ Time Remaining: Calculating...";
+                }
+            }
+            
+            // Log data for self-learning (append to server log)
+            logDataPoint(rateHistory, totalDrops, prediction.remaining);
+        } else {
+            remainEl.innerText = "Prediction unavailable";
+        }
+    } catch (err) {
+        console.error("Prediction error:", err);
+    }
+}
+
+// Log data point for self-learning/retraining
+async function logDataPoint(rateHistory, totalDrops, remaining) {
+    try {
+        await fetch("http://localhost:5000/log-data", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                rateHistory: rateHistory,
+                totalDrops: totalDrops,
+                remaining: remaining
+            })
+        });
+    } catch (err) {
+        console.error("Logging error:", err);
     }
 }
 
