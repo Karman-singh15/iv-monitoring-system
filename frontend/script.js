@@ -73,9 +73,13 @@ async function loadStatus() {
             flowEl.innerText = "Unknown";
         }
 
-        // Add volume update
+        // Drop count and volume
+        const dropCountEl = document.getElementById("dropCount");
+        if (dropCountEl && status.totalDrops !== undefined) {
+            dropCountEl.innerText = `💧 Drops Detected: ${status.totalDrops}`;
+        }
         const volumeEl = document.getElementById("volume");
-        if (status.totalVolume !== undefined && volumeEl) {
+        if (volumeEl && status.totalVolume !== undefined) {
             volumeEl.innerText = `Volume Infused: ${status.totalVolume.toFixed(2)} mL`;
         }
 
@@ -124,15 +128,6 @@ async function predictRemaining(rateHistory, totalDrops) {
 
         if(prediction.remaining !== undefined) {
             remainEl.innerText = `🔮 Predicted remaining: ${prediction.remaining.toFixed(2)} ml`;
-            
-            const timeRemainEl = document.getElementById("timeRemaining");
-            if (timeRemainEl) {
-                if (prediction.timeRemaining !== undefined && prediction.timeRemaining > 0) {
-                    timeRemainEl.innerText = `⏱️ Time Remaining: ${prediction.timeRemaining.toFixed(1)} min`;
-                } else {
-                    timeRemainEl.innerText = "⏱️ Time Remaining: Calculating...";
-                }
-            }
             
             // Log data for self-learning (append to server log)
             logDataPoint(rateHistory, totalDrops, prediction.remaining);

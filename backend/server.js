@@ -12,38 +12,32 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-// Serve the frontend static files
-app.use(express.static(path.join(__dirname, '../frontend')))
-
 let flowStatus = "UNKNOWN"
 let dropMessage = null
 let rateHistory = [] // recent rate history for ML
 let totalDrops = 0
-let totalVolume = 0 // total volume infused (ml) assuming 20 drops/ml
+let totalVolume = 0   // ml, at 20 drops/ml
 let lastDropTime = null
 let anomalyAlert = null
 const MAX_HISTORY = 5
 
 const isSimulation = process.argv.includes('--simulate')
 
-let port;
 const parser = new ReadlineParser({ delimiter: "\n" })
 
 if (!isSimulation) {
- // Arduino serial
- port = new SerialPort({
+ const port = new SerialPort({
   path: "/dev/cu.usbserial-A5069RR4",
   baudRate: 9600
  })
  port.pipe(parser)
 } else {
- console.log("🛠️ Running in SIMULATION mode. Emitting fake drop data...")
- // Simulate flow messages and a drop every 1.5 seconds
- setTimeout(() => parser.emit("data", "FLOW_RUNNING"), 1000)
- setInterval(() => {
-  parser.emit("data", "Drop detected")
- }, 1500)
+ console.log("🛠️  SIMULATION MODE — emitting a fake drop every 1.5 sec")
+ flowStatus = "RUNNING"
+ setTimeout(() => parser.emit("data", "FLOW_RUNNING"), 500)
+ setInterval(() => parser.emit("data", "Drop detected"), 1500)
 }
+
 
 parser.on("data",(line)=>{
 
@@ -59,24 +53,23 @@ parser.on("data",(line)=>{
   flowStatus = "RUNNING"
  }
 
- // look for drop notification
+ // look for drop notification (Arduino sends plain "Drop detected")
  if(line.toLowerCase().includes("drop")){
   dropMessage = line.trim()
   
+  // Calculate rate from time between drops
   const now = Date.now()
-  if (lastDropTime) {
-   // calculate time difference in seconds
+  if (lastDropTime !== null) {
    const deltaSec = (now - lastDropTime) / 1000.0
-   if (deltaSec > 0) {
-    const rate = 1.0 / deltaSec // drops per second
-    updateRateHistory(rate)
+   if (deltaSec > 0.05) { // debounce: ignore noise faster than 50ms
+    updateRateHistory(1.0 / deltaSec)
    }
   }
-  
   lastDropTime = now
   totalDrops++
-  totalVolume = totalDrops / 20.0 // assuming 20 drops/ml
-  
+  const dropVol = 0.045 + Math.random() * 0.010  // random 0.045–0.055 ml per drop
+  totalVolume += dropVol
+  console.log(`💧 totalDrops: ${totalDrops}, dropVol: ${dropVol.toFixed(4)} ml, total: ${totalVolume.toFixed(3)} ml`)
   checkAnomalies()
  }
 
@@ -112,14 +105,14 @@ function checkAnomalies() {
 // send HR
 app.post("/heart",(req,res)=>{
  const {hr} = req.body
- if(port) port.write(`HR${hr}\n`)
+ port.write(`HR${hr}\n`)
  res.json({status:"sent"})
 })
 
 // send SPO2
 app.post("/spo2",(req,res)=>{
  const {sp} = req.body
- if(port) port.write(`SP${sp}\n`)
+ port.write(`SP${sp}\n`)
  res.json({status:"sent"})
 })
 
@@ -134,6 +127,7 @@ app.get("/status",(req,res)=>{
   anomaly: anomalyAlert
  })
 })
+
 
 // ML prediction endpoint
 app.post("/predict", (req, res) => {
@@ -158,21 +152,10 @@ app.post("/predict", (req, res) => {
   
   const remaining = parseFloat(stdout.trim())
   
-  // Calculate time remaining based on average current drop rate
-  const avgRate = rateHistory.reduce((a,b) => a+b) / rateHistory.length // drops per second
-  const rateMlPerMin = (avgRate * 60) / 20.0 // ml per minute
-  
-  let timeRemaining = 0
-  if (rateMlPerMin > 0) {
-      timeRemaining = remaining / rateMlPerMin
-  }
-  
   res.json({
    remaining: remaining,
-   timeRemaining: timeRemaining,
    rateHistory: rateHistory,
    totalDrops: drops,
-   totalVolume: totalVolume,
    anomaly: anomalyAlert
   })
  })
@@ -186,7 +169,7 @@ app.post("/log-data", (req, res) => {
   return res.status(400).json({error: "Invalid rate history"})
  }
  
-const logEntry = {
+ const logEntry = {
   timestamp: new Date().toISOString(),
   rateHistory: history,
   totalDrops: drops,
