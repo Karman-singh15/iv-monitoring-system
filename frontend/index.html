@@ -46,11 +46,12 @@
         </section>
 
         <section class="card">
-            <h2>🔮 ML Prediction</h2>
-            <div id="remaining">Collecting data...</div>
-            <p style="font-size: 0.9em; color: #666; margin-top: 8px;">
-                Based on recent flow patterns and total drops
-            </p>
+            <h2>⏱️ Time Remaining</h2>
+            <label style="font-size:0.9em; color:#888;">IV Bag Volume (mL):</label><br>
+            <input id="bagVolume" type="number" value="500" min="1" style="width:100px; margin:4px 0 10px 0; padding:4px; border-radius:4px; border:1px solid #ccc;">
+            <div id="remaining" style="font-size:1.2em; font-weight:bold;">Waiting for flow data...</div>
+            <div id="timeRemaining" style="margin-top:5px; font-weight:bold; color:#339af0; font-size:1.1em;">⏱️ Time Remaining: --</div>
+            <p style="font-size: 0.9em; color: #666; margin-top: 8px;">Based on current drop rate and bag volume</p>
         </section>
 
         <section class="card">

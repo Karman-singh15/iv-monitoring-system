@@ -14,10 +14,11 @@ app.use(express.json())
 
 let flowStatus = "UNKNOWN"
 let dropMessage = null
-let rateHistory = [] // recent rate history for ML
+let rateHistory = [] // recent drop rates for anomaly detection
 let totalDrops = 0
-let totalVolume = 0   // ml, at 20 drops/ml
+let totalVolume = 0   // ml
 let lastDropTime = null
+let flowStartTime = null  // time of first drop, for overall avg calculation
 let anomalyAlert = null
 const MAX_HISTORY = 5
 
@@ -66,6 +67,7 @@ parser.on("data",(line)=>{
    }
   }
   lastDropTime = now
+  if (!flowStartTime) flowStartTime = now   // record when flow began
   totalDrops++
   const dropVol = 0.045 + Math.random() * 0.010  // random 0.045–0.055 ml per drop
   totalVolume += dropVol
@@ -102,21 +104,69 @@ function checkAnomalies() {
  }
 }
 
+// ─── 3-second snapshot buffer ────────────────────────────────────────────────
+// All raw data accumulates in real-time. Every 3s we freeze a snapshot.
+// The frontend polls /snapshot every 3s so it always gets a stable, complete
+// set of stats — no mid-cycle partial updates.
+
+let snapshot = {
+ flow: "UNKNOWN",
+ totalDrops: 0,
+ totalVolume: 0,
+ avgDropsPerSec: 0,
+ avgMlPerSec: 0,
+ rateHistory: [],
+ anomaly: null,
+ lastUpdated: Date.now()
+}
+
+function buildSnapshot() {
+ const avgDropsPerSec = rateHistory.length > 0
+  ? rateHistory.reduce((a,b) => a+b) / rateHistory.length
+  : 0
+
+ // Overall average mL/sec = total volume / total elapsed seconds
+ const elapsedSec = flowStartTime ? (Date.now() - flowStartTime) / 1000 : 0
+ const avgMlPerSec = elapsedSec > 0 ? totalVolume / elapsedSec : 0
+
+ snapshot = {
+  flow: flowStatus,
+  totalDrops,
+  totalVolume,
+  avgDropsPerSec,
+  avgMlPerSec,
+  rateHistory: [...rateHistory],
+  anomaly: anomalyAlert,
+  lastUpdated: Date.now()
+ }
+ console.log(`📸 Snapshot: ${totalDrops} drops, ${totalVolume.toFixed(3)} ml, ${avgDropsPerSec.toFixed(2)} drops/s`)
+}
+
+// Freeze snapshot every 3 seconds
+setInterval(buildSnapshot, 3000)
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 // send HR
 app.post("/heart",(req,res)=>{
  const {hr} = req.body
- port.write(`HR${hr}\n`)
+ if(port) port.write(`HR${hr}\n`)
  res.json({status:"sent"})
 })
 
 // send SPO2
 app.post("/spo2",(req,res)=>{
  const {sp} = req.body
- port.write(`SP${sp}\n`)
+ if(port) port.write(`SP${sp}\n`)
  res.json({status:"sent"})
 })
 
-// get flow status and any drop message
+// Snapshot endpoint — returns the last 3-second frozen stats
+app.get("/snapshot",(req,res)=>{
+ res.json(snapshot)
+})
+
+// get flow status (legacy — keep for backwards compatibility)
 app.get("/status",(req,res)=>{
  res.json({
   flow: flowStatus,
@@ -127,6 +177,7 @@ app.get("/status",(req,res)=>{
   anomaly: anomalyAlert
  })
 })
+
 
 
 // ML prediction endpoint
