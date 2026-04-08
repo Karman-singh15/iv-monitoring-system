@@ -18,16 +18,18 @@ let rateHistory = [] // recent drop rates for anomaly detection
 let totalDrops = 0
 let totalVolume = 0   // ml
 let lastDropTime = null
-let flowStartTime = null  // time of first drop, for overall avg calculation
+let totalActiveSec = 0    // accumulate only when flow is actively running
+let lastSnapshotTime = Date.now()
 let anomalyAlert = null
 const MAX_HISTORY = 5
 
+let port = null
 const isSimulation = process.argv.includes('--simulate')
 
 const parser = new ReadlineParser({ delimiter: "\n" })
 
 if (!isSimulation) {
- const port = new SerialPort({
+ port = new SerialPort({
   path: "/dev/cu.usbserial-A5069RR4",
   baudRate: 9600
  })
@@ -67,7 +69,6 @@ parser.on("data",(line)=>{
    }
   }
   lastDropTime = now
-  if (!flowStartTime) flowStartTime = now   // record when flow began
   totalDrops++
   const dropVol = 0.045 + Math.random() * 0.010  // random 0.045–0.055 ml per drop
   totalVolume += dropVol
@@ -125,9 +126,22 @@ function buildSnapshot() {
   ? rateHistory.reduce((a,b) => a+b) / rateHistory.length
   : 0
 
- // Overall average mL/sec = total volume / total elapsed seconds
- const elapsedSec = flowStartTime ? (Date.now() - flowStartTime) / 1000 : 0
- const avgMlPerSec = elapsedSec > 0 ? totalVolume / elapsedSec : 0
+ const now = Date.now()
+ const deltaSec = (now - lastSnapshotTime) / 1000
+ lastSnapshotTime = now
+
+ // Auto-detect flow status: if drops haven't changed in 3s, flow is stopped
+ if (totalDrops > 0) {
+  if (totalDrops === snapshot.totalDrops) {
+   flowStatus = "STOPPED"
+  } else {
+   flowStatus = "RUNNING"
+   totalActiveSec += deltaSec
+  }
+ }
+
+ // Overall average mL/sec = total volume / active seconds
+ const avgMlPerSec = totalActiveSec > 0 ? totalVolume / totalActiveSec : 0
 
  snapshot = {
   flow: flowStatus,
@@ -139,7 +153,7 @@ function buildSnapshot() {
   anomaly: anomalyAlert,
   lastUpdated: Date.now()
  }
- console.log(`📸 Snapshot: ${totalDrops} drops, ${totalVolume.toFixed(3)} ml, ${avgDropsPerSec.toFixed(2)} drops/s`)
+ console.log(`📸 Snapshot: ${totalDrops} drops, ${totalVolume.toFixed(3)} ml, ${avgDropsPerSec.toFixed(2)} drops/s, flow: ${flowStatus}`)
 }
 
 // Freeze snapshot every 3 seconds
