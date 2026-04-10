@@ -33,6 +33,12 @@ function updateDashboard(s) {
         volumeEl.innerText = `Volume Infused: ${s.totalVolume.toFixed(3)} mL`;
     }
 
+    // ── Flow Rate ─────────────────────────────────────────────────────────────
+    const flowRateEl = document.getElementById("flowRate");
+    if (flowRateEl) {
+        flowRateEl.innerText = `${s.avgDropsPerSec.toFixed(2)} drops/sec`;
+    }
+
     // ── Rate history ──────────────────────────────────────────────────────────
     const rateEl = document.getElementById("rateHistory");
     if (rateEl) {
