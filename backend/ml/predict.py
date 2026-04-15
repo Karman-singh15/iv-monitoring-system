@@ -2,7 +2,7 @@ import sys
 import joblib
 
 # load model
-model = joblib.load("ml/model.pkl")
+model = joblib.load("backend/ml/model.pkl")
 
 # get inputs: r1, r2, r3, r4, r5, total_drops
 inputs = list(map(float, sys.argv[1:7]))
